@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gaussian Elimination</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0f14;
+      --surface: #13161d;
+      --border: #252a36;
+      --accent: #4fffb0;
+      --text: #e2e8f0;
+      --text-muted: #64748b;
+      --cell-bg: #1a1e28;
+      --cell-focus: #1e2535;
+      --danger: #ff4f6e;
+      --op-bg: #111520;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'IBM Plex Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 60px 24px 80px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(79,255,176,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(79,255,176,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 960px;
+    }
+
+    header {
+      margin-bottom: 56px;
+      animation: fadeDown 0.6s ease both;
+    }
+
+    .label-tag {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: clamp(28px, 5vw, 48px);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+
+    h1 span { color: var(--accent); }
+
+    .subtitle {
+      margin-top: 10px;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 300;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 40px;
+      animation: fadeUp 0.5s 0.2s ease both;
+    }
+
+    .control-row label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .stepper {
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .stepper-btn {
+      width: 34px;
+      height: 40px;
+      background: transparent;
+      border: none;
+      color: var(--accent);
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+      user-select: none;
+      padding-bottom: 2px;
+    }
+
+    .stepper-btn:hover { background: rgba(79,255,176,0.1); }
+    .stepper-btn:active { background: rgba(79,255,176,0.2); }
+
+    .size-display {
+      width: 44px;
+      text-align: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 16px;
+      color: var(--text);
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      line-height: 40px;
+      user-select: none;
+    }
+
+    .btn {
+      padding: 10px 24px;
+      background: var(--accent);
+      color: #0d0f14;
+      border: none;
+      border-radius: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+    }
+
+    .btn:hover {
+      background: #6fffbf;
+      box-shadow: 0 0 18px rgba(79,255,176,0.3);
+    }
+
+    .btn:active { transform: scale(0.97); }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(79,255,176,0.08);
+      box-shadow: 0 0 14px rgba(79,255,176,0.15);
+    }
+
+    .error-msg {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: var(--danger);
+    }
+
+    .matrix-block { margin-bottom: 32px; }
+    .matrix-actions { margin-top: 20px; }
+
+    .section-title {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .bracket-wrap {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .bracket {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: clamp(40px, 8vw, 72px);
+      font-weight: 300;
+      color: var(--accent);
+      line-height: 1;
+      user-select: none;
+    }
+
+    .matrix-table {
+      border-collapse: separate;
+      border-spacing: 6px;
+    }
+
+    .matrix-table td { padding: 0; }
+
+    .cell {
+      width: 68px;
+      height: 44px;
+      background: var(--cell-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 14px;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    }
+
+    .cell:focus {
+      border-color: var(--accent);
+      background: var(--cell-focus);
+      box-shadow: 0 0 0 2px rgba(79,255,176,0.12);
+    }
+
+    .cell-ro {
+      width: 58px;
+      height: 44px;
+      background: var(--cell-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cell-ro.identity {
+      color: var(--accent);
+      border-color: rgba(79,255,176,0.25);
+      background: rgba(79,255,176,0.05);
+    }
+
+    .aug-divider {
+      width: 2px;
+      background: rgba(79,255,176,0.45);
+      border-radius: 2px;
+      align-self: stretch;
+      margin: 6px 4px;
+    }
+
+    /* ── Operation bar ── */
+    .op-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      background: var(--op-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 20px;
+      animation: fadeUp 0.35s ease both;
+    }
+
+    .op-select {
+      height: 38px;
+      padding: 0 10px;
+      background: var(--cell-bg);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--text);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      appearance: none;
+      -webkit-appearance: none;
+      text-align: center;
+    }
+
+    .op-select:focus { border-color: var(--accent); }
+
+    .op-symbol-btn {
+      height: 38px;
+      min-width: 44px;
+      padding: 0 10px;
+      background: var(--surface);
+      border: 1px solid var(--accent);
+      border-radius: 5px;
+      color: var(--accent);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, box-shadow 0.15s;
+      user-select: none;
+    }
+
+    .op-symbol-btn:hover {
+      background: rgba(79,255,176,0.1);
+      box-shadow: 0 0 10px rgba(79,255,176,0.2);
+    }
+
+    .op-scalar {
+      width: 68px;
+      height: 38px;
+      padding: 0 8px;
+      background: var(--cell-bg);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--text);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 14px;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .op-scalar:focus { border-color: var(--accent); }
+
+    .op-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 15px;
+      color: var(--text-muted);
+      user-select: none;
+    }
+
+    .op-run-btn {
+      margin-left: auto;
+    }
+
+    /* hidden helper */
+    .hidden { display: none !important; }
+
+    /* History of results */
+    #results-container { margin-top: 8px; }
+
+    .result-block {
+      margin-bottom: 28px;
+      animation: fadeUp 0.4s ease both;
+    }
+
+    .op-badge {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      background: rgba(79,255,176,0.08);
+      border: 1px solid rgba(79,255,176,0.2);
+      border-radius: 4px;
+      padding: 3px 8px;
+      display: inline-block;
+      margin-bottom: 14px;
+    }
+
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes cellPop {
+      from { opacity: 0; transform: scale(0.85); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .cell-appear { animation: cellPop 0.22s ease both; }
+
+
+    /* Det warning */
+    .det-warning {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      color: #ffb347;
+      background: rgba(255,179,71,0.07);
+      border: 1px solid rgba(255,179,71,0.3);
+      border-radius: 6px;
+      padding: 10px 16px;
+      margin-bottom: 16px;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    /* Congrats message */
+    .congrats-msg {
+      margin-top: 20px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--accent);
+      background: rgba(79,255,176,0.07);
+      border: 1px solid rgba(79,255,176,0.3);
+      border-radius: 8px;
+      padding: 14px 20px;
+      animation: fadeUp 0.4s ease both;
+      letter-spacing: 0.01em;
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <header>
+    <div class="label-tag">Linear Algebra &mdash; Row Reduction</div>
+    <h1>Gaussian <span>Elimination</span></h1>
+    <p class="subtitle">Choose a matrix size to get started</p>
+  </header>
+
+  <div class="control-row">
+    <label>Matrix size &nbsp;<span style="color:var(--accent)">n</span> &times; <span style="color:var(--accent)">n</span></label>
+    <div class="stepper">
+      <button class="stepper-btn" id="dec-btn">−</button>
+      <div class="size-display" id="size-display">2</div>
+      <button class="stepper-btn" id="inc-btn">+</button>
+    </div>
+    <button class="btn" id="compute-btn">Compute</button>
+    <span class="error-msg" id="error-msg"></span>
+  </div>
+
+  <!-- Input matrix -->
+  <div id="matrix-section" class="matrix-block" style="display:none">
+    <div class="section-title">Input Matrix A</div>
+    <div class="bracket-wrap">
+      <div class="bracket">[</div>
+      <table class="matrix-table" id="matrix-table"></table>
+      <div class="bracket">]</div>
+    </div>
+    <div class="matrix-actions">
+      <button class="btn btn-secondary" id="augment-btn">Augment</button>
+    </div>
+  </div>
+
+  <!-- Augmented matrix [A | I] + operation area -->
+  <div id="augmented-section" class="matrix-block" style="display:none">
+    <div class="section-title">Augmented Matrix [ A | I ]</div>
+    <div id="det-warning" class="det-warning hidden"></div>
+    <div class="bracket-wrap">
+      <div class="bracket">[</div>
+      <table class="matrix-table" id="aug-table"></table>
+      <div class="bracket">]</div>
+    </div>
+
+    <!-- Operation bar (template, will be cloned) -->
+    <div id="op-bar-template" class="op-bar hidden">
+      <select class="op-select" data-role="row-target" title="Row to update"></select>
+      <button class="op-symbol-btn" data-role="symbol" title="Toggle operation">&#61;</button>
+
+      <!-- = mode parts -->
+      <span class="op-label" data-role="eq-row-label"></span>
+      <span class="op-label" data-role="eq-minus" style="font-size:18px">−</span>
+      <input class="op-scalar" data-role="scalar" type="text" inputmode="decimal" placeholder="k" autocomplete="off" spellcheck="false" />
+      <select class="op-select" data-role="row-source" title="Row to use"></select>
+
+      <!-- ⇒ mode parts (hidden initially) -->
+      <input class="op-scalar hidden" data-role="scalar-arrow" type="text" inputmode="decimal" placeholder="k" autocomplete="off" spellcheck="false" />
+      <select class="op-select hidden" data-role="row-source-arrow" title="Row to use"></select>
+
+      <button class="btn op-run-btn" data-role="run">Apply</button>
+    </div>
+  </div>
+
+  <!-- Iteration results -->
+  <div id="results-container"></div>
+
+</div>
+
+<script>
+  const sizeDisplay      = document.getElementById('size-display');
+  const decBtn           = document.getElementById('dec-btn');
+  const incBtn           = document.getElementById('inc-btn');
+  const computeBtn       = document.getElementById('compute-btn');
+  const errorMsg         = document.getElementById('error-msg');
+  const matrixSection    = document.getElementById('matrix-section');
+  const matrixTable      = document.getElementById('matrix-table');
+  const augmentBtn       = document.getElementById('augment-btn');
+  const augmentedSection = document.getElementById('augmented-section');
+  const augTable         = document.getElementById('aug-table');
+  const opTemplate       = document.getElementById('op-bar-template');
+  const resultsContainer = document.getElementById('results-container');
+
+  const MIN = 1, MAX = 8;
+  let n = 2;
+
+  // currentMatrix[r][c] for 0..n-1 rows, 0..2n-1 cols (left=A, right=I)
+  let currentMatrix = [];
+  let history = []; // each entry: { matrix, opBar, resultBlock }
+
+  /* ── Stepper ── */
+  function updateStepper() {
+    sizeDisplay.textContent = n;
+    decBtn.style.opacity = n <= MIN ? '0.3' : '1';
+    decBtn.style.pointerEvents = n <= MIN ? 'none' : 'auto';
+    incBtn.style.opacity = n >= MAX ? '0.3' : '1';
+    incBtn.style.pointerEvents = n >= MAX ? 'none' : 'auto';
+  }
+  decBtn.addEventListener('click', () => { if (n > MIN) { n--; updateStepper(); } });
+  incBtn.addEventListener('click', () => { if (n < MAX) { n++; updateStepper(); } });
+  updateStepper();
+
+  /* ── Build input matrix ── */
+  computeBtn.addEventListener('click', () => {
+    errorMsg.textContent = '';
+    matrixTable.innerHTML = '';
+    augmentedSection.style.display = 'none';
+    augTable.innerHTML = '';
+    resultsContainer.innerHTML = '';
+    currentMatrix = [];
+    history = [];
+
+    for (let r = 0; r < n; r++) {
+      const tr = document.createElement('tr');
+      for (let c = 0; c < n; c++) {
+        const td = document.createElement('td');
+        const input = document.createElement('input');
+        input.type = 'text'; input.inputMode = 'decimal';
+        input.className = 'cell cell-appear';
+        input.style.animationDelay = (r * n + c) * 20 + 'ms';
+        input.dataset.row = r; input.dataset.col = c;
+        input.placeholder = '0'; input.autocomplete = 'off'; input.spellcheck = false;
+        input.addEventListener('input', function() {
+          this.value = this.value.replace(/[^0-9.\-]/g, '');
+        });
+        td.appendChild(input);
+        tr.appendChild(td);
+      }
+      matrixTable.appendChild(tr);
+    }
+
+    matrixSection.style.display = 'block';
+    matrixTable.querySelector('.cell').focus();
+  });
+
+  /* ── Augment ── */
+  augmentBtn.addEventListener('click', () => {
+    // Read A from inputs
+    const A = [];
+    for (let r = 0; r < n; r++) {
+      A[r] = [];
+      for (let c = 0; c < n; c++) {
+        const inp = matrixTable.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
+        A[r][c] = parseFloat(inp.value) || 0;
+      }
+    }
+
+    // Build [A | I] as currentMatrix
+    currentMatrix = [];
+    for (let r = 0; r < n; r++) {
+      currentMatrix[r] = [];
+      for (let c = 0; c < n; c++) currentMatrix[r][c] = A[r][c];
+      for (let c = 0; c < n; c++) currentMatrix[r][n + c] = (r === c) ? 1 : 0;
+    }
+
+    // Check determinant and show warning if zero
+    const detWarning = document.getElementById('det-warning');
+    const d = det(A);
+    if (Math.abs(d) < 1e-9) {
+      detWarning.textContent = '⚠ Warning: the determinant of this matrix is zero.';
+      detWarning.classList.remove('hidden');
+    } else {
+      detWarning.classList.add('hidden');
+    }
+
+    augTable.innerHTML = '';
+    renderAugMatrix(currentMatrix, augTable);
+    augmentedSection.style.display = 'block';
+    resultsContainer.innerHTML = '';
+    history = [];
+
+    // Attach first op bar to augmented section
+    appendOpBar(augmentedSection);
+  });
+
+  /* ── Render an augmented matrix into a <table> ── */
+  function renderAugMatrix(mat, table, delay0 = 0) {
+    table.innerHTML = '';
+    const rows = mat.length;
+    for (let r = 0; r < rows; r++) {
+      const tr = document.createElement('tr');
+
+      // Left (A) part
+      for (let c = 0; c < n; c++) {
+        const td = document.createElement('td');
+        const div = document.createElement('div');
+        div.className = 'cell-ro cell-appear';
+        div.style.animationDelay = (delay0 + r * n + c) * 12 + 'ms';
+        div.textContent = fmt(mat[r][c]);
+        td.appendChild(div); tr.appendChild(td);
+      }
+
+      // Divider
+      const divTd = document.createElement('td');
+      divTd.style.padding = '0 2px';
+      const bar = document.createElement('div');
+      bar.className = 'aug-divider';
+      divTd.appendChild(bar); tr.appendChild(divTd);
+
+      // Right (I / transformed) part
+      for (let c = 0; c < n; c++) {
+        const td = document.createElement('td');
+        const div = document.createElement('div');
+        div.className = 'cell-ro identity cell-appear';
+        div.style.animationDelay = (delay0 + r * n + n + c) * 12 + 'ms';
+        div.textContent = fmt(mat[r][n + c]);
+        td.appendChild(div); tr.appendChild(td);
+      }
+
+      table.appendChild(tr);
+    }
+  }
+
+  /* ── Append an operation bar to a parent element ── */
+  function appendOpBar(parent) {
+    const bar = buildOpBar();
+    parent.appendChild(bar);
+    bar.classList.remove('hidden');
+    return bar;
+  }
+
+  function buildOpBar() {
+    const bar = opTemplate.cloneNode(true);
+    bar.id = '';
+    bar.classList.remove('hidden');
+
+    // Populate row dropdowns
+    const selTarget = bar.querySelector('[data-role="row-target"]');
+    const selSource = bar.querySelector('[data-role="row-source"]');
+    const selSourceArrow = bar.querySelector('[data-role="row-source-arrow"]');
+    const eqRowLabel = bar.querySelector('[data-role="eq-row-label"]');
+
+    function fillSelect(sel, excludeIdx = -1) {
+      const prev = parseInt(sel.value);
+      sel.innerHTML = '';
+      for (let i = 0; i < n; i++) {
+        if (i === excludeIdx) continue;
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `R${i + 1}`;
+        sel.appendChild(opt);
+      }
+      // restore previous selection if still valid
+      if ([...sel.options].some(o => parseInt(o.value) === prev)) sel.value = prev;
+    }
+    fillSelect(selTarget);
+    fillSelect(selSource, 0); // exclude target (default=0)
+    fillSelect(selSourceArrow);
+
+    // Default source to row 1 (different from target=0) if possible
+    if (n > 1) selSource.value = 1;
+
+    // Keep eq-row-label in sync with target; also refresh source exclusion
+    function syncLabel() {
+      const t = parseInt(selTarget.value);
+      eqRowLabel.textContent = `R${t + 1}`;
+      fillSelect(selSource, t);
+    }
+    syncLabel();
+    selTarget.addEventListener('change', syncLabel);
+
+    // Symbol toggle
+    const symBtn = bar.querySelector('[data-role="symbol"]');
+    // eq parts
+    const eqParts = [
+      bar.querySelector('[data-role="eq-row-label"]'),
+      bar.querySelector('[data-role="eq-minus"]'),
+      bar.querySelector('[data-role="scalar"]'),
+      bar.querySelector('[data-role="row-source"]'),
+    ];
+    // arrow parts
+    const arrowParts = [
+      bar.querySelector('[data-role="scalar-arrow"]'),
+      bar.querySelector('[data-role="row-source-arrow"]'),
+    ];
+
+    let mode = 'eq'; // 'eq' | 'swap'
+
+    symBtn.addEventListener('click', () => {
+      mode = mode === 'eq' ? 'swap' : 'eq';
+      if (mode === 'eq') {
+        symBtn.innerHTML = '&#61;'; // =
+        eqParts.forEach(el => el.classList.remove('hidden'));
+        arrowParts.forEach(el => el.classList.add('hidden'));
+      } else {
+        symBtn.innerHTML = '&#10234;'; // ⟺
+        eqParts.forEach(el => el.classList.add('hidden'));
+        arrowParts.forEach(el => el.classList.remove('hidden'));
+      }
+    });
+
+    // Scalar filter — allow digits, dot, minus, slash
+    [bar.querySelector('[data-role="scalar"]'), bar.querySelector('[data-role="scalar-arrow"]')].forEach(inp => {
+      inp.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9.\-\/]/g, '');
+      });
+    });
+
+    // Apply button
+    const runBtn = bar.querySelector('[data-role="run"]');
+    runBtn.addEventListener('click', () => {
+      const targetRow = parseInt(selTarget.value);
+      let scalar, sourceRow;
+
+      if (mode === 'eq') {
+        scalar = parseScalar(bar.querySelector('[data-role="scalar"]').value);
+        sourceRow = parseInt(selSource.value);
+      } else {
+        scalar = parseScalar(bar.querySelector('[data-role="scalar-arrow"]').value);
+        sourceRow = parseInt(selSourceArrow.value);
+      }
+
+      if (isNaN(scalar)) {
+        bar.querySelector('[data-role="scalar' + (mode === 'swap' ? '-arrow' : '') + '"]').focus();
+        return;
+      }
+
+      // Deep-copy current matrix
+      const next = currentMatrix.map(row => [...row]);
+      const cols = 2 * n;
+
+      if (mode === 'eq') {
+        // R_target = R_target - scalar * R_source
+        for (let c = 0; c < cols; c++) {
+          next[targetRow][c] = currentMatrix[targetRow][c] - scalar * currentMatrix[sourceRow][c];
+        }
+      } else if (targetRow === sourceRow) {
+        // Same row: just scale it
+        for (let c = 0; c < cols; c++) {
+          next[targetRow][c] = scalar * currentMatrix[targetRow][c];
+        }
+      } else {
+        // Swap R_target and R_source; if scalar != 1, scale R_source first
+        for (let c = 0; c < cols; c++) {
+          next[targetRow][c] = scalar * currentMatrix[sourceRow][c];
+          next[sourceRow][c] = currentMatrix[targetRow][c];
+        }
+      }
+
+      // Build description badge
+      const scalarStr = fmt(scalar);
+      let desc;
+      if (mode === 'eq') {
+        desc = `R${targetRow+1} ← R${targetRow+1} − ${scalarStr}·R${sourceRow+1}`;
+      } else if (targetRow === sourceRow) {
+        desc = `R${targetRow+1} ← ${scalarStr}·R${targetRow+1}`;
+      } else if (scalar === 1) {
+        desc = `R${targetRow+1} ⟺ R${sourceRow+1}`;
+      } else {
+        desc = `R${sourceRow+1} ← ${scalarStr}·R${sourceRow+1}, then R${targetRow+1} ⟺ R${sourceRow+1}`;
+      }
+
+      // Disable this bar
+      bar.querySelectorAll('select, input, button').forEach(el => {
+        el.disabled = true;
+        el.style.opacity = '0.45';
+      });
+
+      // Save state to history before applying
+      const prevMatrix = currentMatrix.map(row => [...row]);
+
+      // Append result block
+      currentMatrix = next;
+      const block = document.createElement('div');
+      block.className = 'result-block';
+
+      // Badge row: label + undo button
+      const badgeRow = document.createElement('div');
+      badgeRow.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:14px;';
+
+      const badge = document.createElement('div');
+      badge.className = 'op-badge';
+      badge.style.marginBottom = '0';
+      badge.textContent = desc;
+      badgeRow.appendChild(badge);
+
+      const undoBtn = document.createElement('button');
+      undoBtn.className = 'btn btn-secondary';
+      undoBtn.style.cssText = 'padding:3px 12px;font-size:11px;letter-spacing:0.08em;';
+      undoBtn.textContent = '↩ Undo';
+      badgeRow.appendChild(undoBtn);
+      block.appendChild(badgeRow);
+
+      const bw = document.createElement('div');
+      bw.className = 'bracket-wrap';
+      const bl = document.createElement('div'); bl.className = 'bracket'; bl.textContent = '[';
+      const br = document.createElement('div'); br.className = 'bracket'; br.textContent = ']';
+      const tbl = document.createElement('table');
+      tbl.className = 'matrix-table';
+      renderAugMatrix(currentMatrix, tbl);
+      bw.appendChild(bl); bw.appendChild(tbl); bw.appendChild(br);
+      block.appendChild(bw);
+
+      resultsContainer.appendChild(block);
+
+      let nextOpBar = null;
+      if (isIdentityLeft(currentMatrix)) {
+        const congrats = document.createElement('div');
+        congrats.className = 'congrats-msg';
+        // Count zeros in the original n×n left block of the initial augmented matrix
+        // We stored it at augment-time; re-derive from history[0].matrix (before any ops)
+        const origMatrix = history.length > 0 ? history[0].matrix : currentMatrix;
+        let zeroCount = 0;
+        for (let r = 0; r < n; r++)
+          for (let c = 0; c < n; c++)
+            if (origMatrix[r][c] === 0) zeroCount++;
+
+        let msgEncoded;
+        if (!SHOW_EXTENDED_CONGRATS) {
+          congrats.innerHTML = unknown('🎉 Pbatengf! Lbh unir vairegrq lbhe zngevk.');
+        } else if (n === 2) {
+          congrats.innerHTML = unknown('🎉 Pbatengf! Lbh unir vairegrq lbhe zngevk. Gel abj jvgu n 3k3 zngevk!');
+        } else if (zeroCount > 3) {
+          congrats.innerHTML = unknown('🎉 Pbatengf! Lbh unir vairegrq lbhe zngevk. Gel abj jvgu n 3k3 zngevk jvgubhg mrebf!');
+        } else {
+          const ts = new Date().toLocaleString();
+          congrats.innerHTML = unknown("🎉 Pbatengf! V unq yvggyr snvgu gung fbzrbar jbhyq trg urer! Gnxr n fperrafubg naq rznvy vg gb zl Dhrra'f rznvy. V jvyy tvir n cevmr gb gur svefg srj gb qb fb.  QVRTB.") + '<br><span style="font-size:11px;opacity:0.6;">' + ts + '</span>';
+        }
+        block.appendChild(congrats);
+      } else {
+        nextOpBar = appendOpBar(block);
+      }
+
+      // Push to history
+      history.push({ matrix: prevMatrix, opBar: bar, resultBlock: block, nextOpBar });
+
+      // Wire undo
+      undoBtn.addEventListener('click', () => {
+        const entry = history[history.length - 1];
+        if (!entry || entry.resultBlock !== block) return;
+        history.pop();
+        currentMatrix = entry.matrix;
+        // Remove result block
+        entry.resultBlock.remove();
+        // Re-enable previous op bar
+        entry.opBar.querySelectorAll('select, input, button').forEach(el => {
+          el.disabled = false;
+          el.style.opacity = '';
+        });
+        entry.opBar.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+
+      block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    return bar;
+  }
+
+  /* ── Determinant (recursive cofactor expansion) ── */
+  function det(M) {
+    const size = M.length;
+    if (size === 1) return M[0][0];
+    if (size === 2) return M[0][0] * M[1][1] - M[0][1] * M[1][0];
+    let result = 0;
+    for (let c = 0; c < size; c++) {
+      const minor = M.slice(1).map(row => row.filter((_, j) => j !== c));
+      result += (c % 2 === 0 ? 1 : -1) * M[0][c] * det(minor);
+    }
+    return result;
+  }
+
+  const SHOW_EXTENDED_CONGRATS = false;
+
+  function unknown(s) {
+    return s.replace(/[A-Za-z]/g, c => {
+      const base = c <= 'Z' ? 65 : 97;
+      return String.fromCharCode(((c.charCodeAt(0) - base + 13) % 26) + base);
+    });
+  }
+
+  /* ── Check if left n×n block is the identity ── */
+  function isIdentityLeft(mat) {
+    const eps = 1e-9;
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        const expected = (r === c) ? 1 : 0;
+        if (Math.abs(mat[r][c] - expected) > eps) return false;
+      }
+    }
+    return true;
+  }
+
+  /* ── Parse scalar: supports "3/4", "-2/3", "-2.5/3.5", plain floats ── */
+  function parseScalar(s) {
+    s = (s || '').trim();
+    const slash = s.indexOf('/');
+    if (slash !== -1) {
+      const num = parseFloat(s.slice(0, slash));
+      const den = parseFloat(s.slice(slash + 1));
+      if (isNaN(num) || isNaN(den) || den === 0) return NaN;
+      return num / den;
+    }
+    return parseFloat(s);
+  }
+
+  function fmt(v) {
+    if (Object.is(v, -0)) return '0';
+    if (v === 0) return '0';
+    // Round to 4 decimal places for display, strip trailing zeros
+    const rounded = Math.round(v * 10000) / 10000;
+    return parseFloat(rounded.toFixed(4)).toString();
+  }
+</script>
+</body>
+</html>
